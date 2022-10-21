@@ -99,7 +99,7 @@ for qrImage in qrImages:
             x,y,w,h = cv2.boundingRect(approx)
             area = cv2.contourArea(c)
             ar = w / float(h)
-            if len(approx) == 4 and area > 1000 and (ar > .85 and ar < 1.3):
+            if len(approx) > 2 and area > 100 and (ar > .15 and ar < 1.7):
                 crop_img = image[y:y+h, x:x+w]
                 cv2.imwrite("output/"+str(i)+".jpg", crop_img)
                 #cv2.rectangle(image, (x, y), (x + w, y + h), (36,255,12), 3)
