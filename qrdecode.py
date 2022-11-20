@@ -1,15 +1,11 @@
 import cv2
-import numpy as np
-import qrtools
 import pyzbar.pyzbar
 import os
 import sys
 import time
 from termcolor import colored
+from PIL import Image
 
-
-
-# ffmpeg -i qr.gif temp/temp%d.png
 print(colored(r"""
  ▄▄▄▄▄▄▄ ▄ ▄▄▄ ▄▄▄▄▄▄▄
  █ ▄▄▄ █ ▄▄▀█  █ ▄▄▄ █
@@ -29,35 +25,71 @@ help_info = '''
     -d                Default. Prints all output.
     -m1               Mode 1 is used if there is a searched word.
     -m2               Mode 2 is used if there is a word to be removed.
+    -s                Qr code size. Find out with a tool like gimp.
+    -T1               Detailed review. It will take long.
+    -T2               Default
+    -T3               It will be checked quickly.
 
   Note: Put the pictures you want to scan in the input folder.
+  Exp:  python3 qrdecode.py -m1 STMCTF -T3 -s 145
 '''
-
+# argparse
 mode = None
+image_walk = None
+qr_size = None
 try:
     for arg in sys.argv:
-        if arg == "-d":
+        if arg.lower() == "-d":
             mode = "d"
             print(colored("Default mode is set.","red"))
-            break
-        if arg == "-m1":
-            mode = "m1"
-            searchValue = sys.argv[2]
-            print(colored("Mode 1 is set.","red"))
-            break
-        if arg == "-m2":
-            mode = "m2"
-            removeValue = sys.argv[2]
-            print(colored("Mode 2 is set.","red"))
-            break
 
-        if arg == "-h":
+        if arg.lower() == "-m1":
+            mode = "m1"
+            ind = sys.argv.index(arg)
+            searchValue = sys.argv[ind + 1]
+            print(colored("Mode 1 is set.","red"))
+
+        if arg.lower() == "-m2":
+            mode = "m2"
+            ind = sys.argv.index(arg)
+            removeValue = sys.argv[ind + 1]
+            print(colored("Mode 2 is set.","red"))
+
+        if arg.lower() == "-h":
             print(colored(help_info, "green"))
             sys.exit()
+
+        if arg.lower() == "-t1":
+            image_walk = 10
+            print(colored("Detailed review activated. This process may take time.", "red"))
+
+        if arg.lower() == "-t2":
+            image_walk = 20
+            print(colored("Default review activated.", "red"))
+
+        if arg.lower() == "-s":
+            ind = sys.argv.index(arg)
+            qr_size = int(sys.argv[ind + 1])
+            print(colored("The qr code size is set to {}.".format(qr_size),"red"))
+
+        if arg.lower() == "-t3":
+            image_walk = 30
+            print(colored("Quick review activated. It will be checked quickly", "red"))
+
+
+    if qr_size == None:
+        print(colored("QR code size must be entered!!!.", "red"))
+        sys.exit()
 
     if mode == None:
         print(colored("Default mode is set.","red"))
         mode = "d"
+
+    if image_walk == None:
+        image_walk = 20
+        print(colored("Default review activated.", "red"))
+
+
 except SystemExit:
     sys.exit()
 except:
@@ -66,6 +98,7 @@ except:
 
 time.sleep(3)
 
+print(colored("Images are cropping...","green"))
 qrImages = os.listdir("input/")
 for qrImage in qrImages:
     if (qrImage.lower().find("png") > -1) or (qrImage.lower().find("pneg") > -1) or (qrImage.lower().find("jpg") > -1) or (qrImage.lower().find("jpeg") > -1) or (qrImage.lower().find("jfif") > -1):
@@ -79,40 +112,26 @@ for qrImage in qrImages:
         files = os.listdir("output/")
         for file in files:
             os.remove("output/"+file)
-        image = cv2.imread('input/'+qrImage)
-        original = image.copy()
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        blur = cv2.GaussianBlur(gray, (9,9), 0)
-        thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+        #image = cv2.imread('input/'+qrImage)
+        img = Image.open('input/'+qrImage)
+        w, h = img.size
 
-        # Morph close
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
-        close = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel, iterations=2)
+        i = 1
+        for walk_h in range(0, h, image_walk):
 
-        # Find contours and filter for QR code
-        cnts = cv2.findContours(close, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-        i = 0
-        for c in cnts:
-            peri = cv2.arcLength(c, True)
-            approx = cv2.approxPolyDP(c, 0.04 * peri, True)
-            x,y,w,h = cv2.boundingRect(approx)
-            area = cv2.contourArea(c)
-            ar = w / float(h)
-            if len(approx) > 2 and area > 100 and (ar > .15 and ar < 1.7):
-                crop_img = image[y:y+h, x:x+w]
-                cv2.imwrite("output/"+str(i)+".jpg", crop_img)
-                #cv2.rectangle(image, (x, y), (x + w, y + h), (36,255,12), 3)
-                #ROI = original[y:y+h, x:x+w]
-                #cv2.imwrite('ROI.png', ROI)
-            i = i + 1
+            for walk_w in range(0, w, image_walk):
+
+                cropped = img.crop((walk_w, walk_h, walk_w+qr_size, walk_h+qr_size))
+
+                cropped.save("output/"+str(i)+".png", "png")
+                i += 1
 
         dosyalar = os.listdir("output/")
         for qrImage in dosyalar:
-            if (qrImage.lower().find("jpg") > -1):
+            if (qrImage.lower().find("png") > -1):
                 pass
             else:
-                qrImages.remove(qrImage)
+                dosyalar.remove(qrImage)
         print(colored("The files of the "+str(orgImage)+"th photo have been saved. Reading qr code!!","green"))
         for file in dosyalar:
             image = cv2.imread("output/"+file)
@@ -138,6 +157,4 @@ for qrImage in qrImages:
 
     except SystemExit:
         sys.exit()
-    except:
-        pass
     orgImage = orgImage + 1
