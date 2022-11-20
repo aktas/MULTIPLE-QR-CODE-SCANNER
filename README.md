@@ -1,6 +1,7 @@
 # MULTIPLE-QR-CODE-SCANNER
 Multiple qr code scanner for image
 
+```
  ▄▄▄▄▄▄▄ ▄ ▄▄▄ ▄▄▄▄▄▄▄
  █ ▄▄▄ █ ▄▄▀█  █ ▄▄▄ █
  █ ███ █ █▀ ▄▀ █ ███ █
@@ -25,3 +26,4 @@ Multiple qr code scanner for image
 
   Note: Put the pictures you want to scan in the input folder.
   Exp:  python3 qrdecode.py -m1 STMCTF -T3 -s 145 
+```
